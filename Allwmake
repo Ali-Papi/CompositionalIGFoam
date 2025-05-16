@@ -1,0 +1,16 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # run from this directory
+set -x
+
+if [ -f $WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments ]
+then  . $WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments
+fi
+
+wmake libraries/general
+wmake libraries/toolsGIS
+wmake libraries/numericalMethods
+wmake libraries/porousModels
+wmake libraries/porousBoundaryConditions
+
+wmake all solvers
+wmake all utilities

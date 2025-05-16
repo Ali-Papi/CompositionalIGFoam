@@ -1,0 +1,1127 @@
+************************
+*** PMF v2503
+*** Dual-Mesh Methods + Modular solvers + New tutorials with validation scripts
+************************
+
+### Solvers
+
+- groundwaterFoam/groundwaterTransportFoam
+
+  - Newton solver has been improved to be used in steady simulations.
+  - Normalized residual is now used for both Picard and Newton algorithm.
+
+- groundwater2DFoam
+
+  - set U = 0 for dry cells to avoid random value leading to transport instabilities
+  - add fixed point outflow to seepageTerm field
+
+- porousScalarTransportFoam
+
+  - dynamicRefineFvMesh can be now used by specifying options in constant/dynamicMeshDict
+  - possibility to automatically reconstruct phi if not present (using K/potential/rho/mu)
+
+- groundwaterTransportFoam
+
+  - dual-mesh methods added
+
+### Libraries
+
+- general/PMFversion
+
+  add new PMFversion class for display PMF version information in solvers (instead of headerPMF.H)
+
+- toolsGIS/outputEventFile
+
+  - now handles dynamicMesh when output-times are specified
+
+- porousModels/flowModels
+
+  - RichardsEqn: new class added to handle Richards' equation and related fields. This reduces drastically
+  the files groundwaterFoam.C and groundwaterTransportFoam.C by removing many #include.
+  RichardsEqn gives access to internal fields (theta, h and phi) and has several functions to compute residuals
+  or solve equation using different algorithm (Picard or Newton).
+
+  - DupuitDarcyEqn: new class similar to RichardsEqn but for solving 2D groundwater flows.
+  Used by groundwater2DFoam and groundwaterTransport2DFoam.
+
+- porousModels/relativePermeabilityModels
+
+  - make derivative computation optional to reduce cost (dkradS/dkrbdS)
+
+- numericalMethods/multiMesh
+
+  - new classes to handle dual mesh methods with simpleMesh/dualStaticMesh/dualDynamicMesh
+  - Dual-mesh approach solves flow equation (Richards) on a coarse mesh and tracer transport on fine mesh.
+  - usable only with groundwaterTransportFoam
+
+### Tutorials
+
+  - global reorganization + new scripts
+
+### Bug fixes
+
+- groundwater2DFoam: fix seepageTerm computation
+- porousScalarTransport2DFoam: fix phi intialization (when 0/phi is supplied)
+- outputField: no more freeze with OFstream and parallel runs
+
+************************
+*** PMF v2406
+*** Starting class-based dev for solvers/libraries + new dispersion model
+************************
+
+
+### Libraries
+
+- dualAlphaDispersion
+
+  - new dispersion model with two sets of parameters used for saturated
+  (alphaL_sat/alphaT_sat) and unsaturated areas (alphaL_unsat/alphaT_unsat).
+  Transition between values are computed using theta thresholds
+  (thetaThreshold_unsat and thetaThreshold_sat)
+
+- numericalMethods/timestepManager
+
+  - new classes have been designed to handle multi-time stepping techniques
+  using c++Objects instead of #include. All the solvers use this new feature.
+  As a result, multiple files have been removed, such as all the setDeltaT.H.
+
+- toolGis
+
+  - Similary to timestepManager, outputEventFile class coupled with new class
+  outputFields allows to use c++ object to handle eventWrite + mass balance
+  computation. As a result, multiple files have been removed such as eventWrite.H
+  and readEvent.H.
+
+  - Minor change for eventInfiltration keyword :
+    eventFileInfiltration => infiltrationEventFile
+
+- keywords
+
+  - new library/class has been created to ensure compatibility with API. PMF
+  keywords are liste in etc/keywords.yaml file
+
+### Solvers
+
+- groundwaterFoam
+
+  - Transient simulations use directly the OpenFOAM fvMatrix residuals to
+  evaluate Picard convergence. Relaxation factor can be used for transient.
+
+  - Two modes are available for time-stepping :
+
+    - truncation: based on truncation error (using truncationError value)
+    - nIterPicard: based on the number of Picard iteration requires at each
+    timestep (using nIterPicard)
+
+### Bug fix
+
+- eventInfiltration compute velocity along gravity-axis (instead of patch
+  normal) to avoid lateral infiltration for non-planar patch. Negative values in
+  infiltration.dat still mean inflow (and positive value exfiltration)
+
+- fix missing updateForcing fo GWTfoam
+
+- fix CmassBalance computation for porousScalarTransportFoam
+
+- fix parallel efficiency with CSV file outputs
+
+- fix h relaxation based on openfoam residual
+
+************************
+*** PMF v2310
+*** Minor fixes and compatibility
+************************
+
+### Compatibility
+
+- fix partial compatibility for Clang and v2212
+
+### Minor changes
+
+- rename libraries to PMFXXXX.so
+
+- fix keyword for output event in groundwaterTransportFoam
+
+- remove non-working mapFieldsFrom2D folder
+
+************************
+*** PMF v2303
+*** Dual porosity model + readthedocs
+************************
+
+### Bug fix
+
+- parallel issue for source-injection/fixed points
+
+- parallel issue in time derivative computation (used for timesteps management) 
+
+### General
+
+- All solvers display current version of PMF.
+
+- Global reorganization of libraries for dual porosity developements.
+
+- To handle scalar transport in simple/dual porosity models, CEqn.H has been
+  moved in porousMediumTransportModel classes (and removed from solver). The
+  transport equation is solved as for example:
+
+  pmTransportModel->solveTransport(Utheta, phi, theta);
+
+### Libraries
+
+- porousMediumModel
+
+  - new class for handling porosity (eps) and permeability (K)
+
+- twophasePorousMediumModel
+
+  - new asbtract class for handling simple/dual porosity model (flow only)
+
+- simplePorosity
+
+  - porousMedium class for one porosity model (one Saturation, kr, pc...)
+
+- dualPorosity
+
+  - porousMedium class for dual porosity model (with Fracture and Matrix)
+
+- porousMediumTransportModel
+
+  - new  class for handling simple/dual porosity model (transport)
+
+- simplePorosityTransport
+
+  - porousMedium class for scalar transport in one porosity model
+
+- dualPorosityTransport
+
+  - porousMedium class for scalar transport in dual porosity model
+  (with Fracture and Matrix)
+  
+- relativePermeability/capillarity:
+
+  - Smin/Smax are common to all kr/pc model and included in general abstract. As
+  a consequence, values are now read in the model dictionary (and not from the
+  global transportProperties dict). For example, the thetamin value for
+  Van Genuchten model is read in VanGenuchtenCoeffs
+
+### Solvers
+
+- steadyGroundwaterFoam/groundwaterFoam
+
+  - solvers have been merged. Steady simulations can be done using -steady
+  option, i.e. :
+       groundwaterFoam -steady
+
+  - Picard residuals can be written in residuals.csv file by adding option in
+  controlDict (works for steady run) :
+	      writeResiduals true;
+
+- steadyGroundwater2DFoam/groundwater2DFoam
+
+  - solvers have been merge. Steady simulations can be done using -steady
+  option, i.e. :
+       groundwater2DFoam -steady
+
+- groundwaterFoam (steady mode)
+
+  - residual field and max values can be written during the run with the
+  controlDict option:
+
+  writeResiduals yes;
+
+### Tutorials
+
+- 1Dinfiltration_dualPorosity (for flow and flow+transport)
+
+  validation case for dual porosity model using METIS results
+
+### Minor changes
+
+- new kr(volfield) function added to relativePermeability classes to compute
+  relative permeability from a given saturation
+
+- new S(volfield) function added to capillaryModel classes to compute saturation
+  from a given pressure head field
+
+************************
+*** PMFv2107.2
+*** Minor fixes for PMFv2107.1
+************************
+
+### Bug fixes
+
+- timeStepManager
+
+  - there was issues for derivative computation when running on multiple cores.
+  timeStepManager class now uses reduce function.
+
+- sourceEventFile / 2D fixed points
+
+  - parallel issues for source injection and potential fixed points.
+
+************************
+*** PMFv2107.2
+*** Minor fixes for PMFv2107.1
+************************
+
+### Utilities
+
+- subsetMeshFromDEM
+
+  - Generate automatically a subsetMesh using two DEM files, respectively for
+    the top and the bottom of the aquifer:
+
+    subsetMeshFromDEM /patch/to/file/top.xyz /patch/to/file/bottom.xyz
+
+    two patches are automatically generated: top and bottom.
+
+- setFieldsFromXY
+
+  - utility now generate a mapping file (.map) linking mesh cells to XY points.
+  If .map file is present, utility check that number of cells corresponds to the
+  mesh and that number of points corresponds to the interpolation. This allows
+  the re-use of similar interpolation with reduced cost. Works both for serial
+  and parallel runs.
+
+### Bug
+
+- groundwaterTransport2DFoam
+
+  - fix dryCells (C=0 and dC/dt=0)
+
+- darcyGradPressure
+
+  - now handle dry cells (mobility=0) to avoid crash during steady iterations
+
+- multiple minor bugs
+
+************************
+*** PMFv2107.1
+*** Minor fixes for PMFv2107
+************************
+
+### Libraries
+
+- numericalMethods
+
+  - timestepManager: new class managing derivative computations (1s, 2nd
+  and 3rd order) and timestepping based on truncation error.
+  This allows to simplify the code of the solvers by implementing common
+  functions in this new class
+
+- porousBoundaryConditions
+
+  - fixedHeadPressure/fixedHeadPressureSTL BCs have been deleted. They can be
+  replaced by usual fixedValue while initialize values with the utility
+  setBoundaryWaterLevel
+
+### Solvers
+
+- steadyGroundwaterFoam
+
+  - seepage has been added (similar to transient solver groundwaterFoam)
+
+- groundwater solvers
+
+  - number of seepage cells is only displayed for serial simulation (parallel
+  simulations give wrong value in terminal due to domain decomposition)
+
+### Tutorials
+
+- darcyFoam
+
+  - fix input folder (0 -> 0.org) to avoid paraview visualizations
+
+### utilities
+
+- setBoundaryWaterLevel
+
+  - replace setBoundaryHeadPressure as it can be used for potential or h
+  - version option (2D/3D) has been replaced by field option (h/potential)
+
+### Bug Fix
+
+- groundwaterFoam/groundwater2DFoam: set deltah/dpotential=0 for seepage cells
+
+- steadyGroundwaterFoam: set residual=0 for seepage cells
+
+- pcVanGenuchten: fix Se computation when -VSMALL < h < 0
+
+- set derivative=0 (1st/2nd/3rd order) for dry cells.
+
+************************
+*** PMFv2107
+*** Bug Fix + tools folder 
+************************
+
+### General
+
+- MNT (Modèle Numérique de Terrain) has been replaced by DEM (Digital
+  Elevation Model) for file name, field name, comments...
+
+### Tools
+
+- new folder containing external tools (python/bash scripts) for the toolbox
+
+- pmf_csvToEvent
+
+  - python script to convert csv file extracted from simulations into event
+  file. It can be used to recover 1D column unsaturated fluxes for example to
+  inject in 2D watershed model. For usage, execute:
+
+  python pmf_csvToEvent.py --help
+
+### Tutorials
+
+- Global
+
+  - scripts are now compatible with python 3.
+
+### Bug fixes
+
+- Time-step management when (eventTimeTracking=false) has been fixed
+
+************************
+*** PMFv2102
+*** Newton Algorithm for unsaturated solvers (groundwater)
+************************
+
+### Compilation
+
+- Toolbox now accepts parallel compilation, run :
+
+  ./Allwmake -jX
+
+  with X the number of processors
+
+### Solvers
+
+- Global
+
+  - output event value are not explictly computed but constructed by
+  interpolation to avoid time step instabilities. Time interpolated fields are
+  also used for CSV outputs.
+
+- groundwaterFoam/groundwaterTransportFoam
+
+  - pressure head equation can be solved using Newton algorithm to handle
+  strong non linearities. Convergence is faster than Picard's algorithm and can
+  handle complex cases where Picard does not converge, for example flow close
+  to the saturated point.
+  - pressure head equation is first solved using Picard formulation until the
+  Picard tolerance is reached (specified in system/fvSolution) and then equation
+  is solver using Newton method until the Newton tolerance.
+  - the equations residual is now signed and under-relaxation occurs only when
+  residual increases without changing sign.
+  - timestep is managed using time scheme for truncation error. Only the Euler
+  timescheme is currently handled for the pressure head equation but 2nd order
+  schemes can be used for C equation (see tutorials).
+
+- stationaryGroundwaterFoam
+
+  - convergence and time control is now based on hEqn residual.
+  - additional under-relaxation has been added (based on residual decrease)
+  to improve convergence rate.
+  - seepage option is now independant from fixedPotentialList and is activated
+  in transportProperties as:
+     seepage yes;
+
+- groundwater2DFoam/groundwater2DTransportFoam
+
+  - add waterSourceEventFile options to 2D solvers to force localized volumetric
+  in 2D solvers (same usage as groundwaterFoam/groundwaterTransportFoam)  
+
+### Utilities
+
+- setBoundaryHeadPressure
+
+  - add uniform potential option for 2D solvers (potential field)
+
+- setFieldsFromXY
+
+  - user can specify the number of points for interpolation (default = 3):
+    1 => use closest point value
+    0 => use number of neighbour faces for each cell
+
+### Libraries
+
+- numericalMethods
+
+  - new Jacobian Matrix class for handling FD Newton algorithm (finite
+  difference method, for debugging only)
+
+### Bug fixes
+
+- solved ambiguous calls for compatibility with CLANG and OSX
+- fix dimensions in ToddNo.H
+- fix interpolation functions for event value computation
+- 3rd time derivative computed on potential (instead of hwater) to avoid
+instabilities when hwater tends to 0
+- fix retard coefficient for unsaturated (depends on saturation flow)
+- fix flow/balance computation in 2D solvers
+- handle correctly dry cells for stationaryGroundwater2DFoam solver
+- fix deltat reduction for Picard loop groundwaterTransportFoam
+- fix C flux computation in CSV (groundwaterTransportFoam)
+- add FatalError when timestep is fixed and Picard/Newton does not converge
+
+************************
+*** PMFv1912
+*** Multi-species transport and timestep management
+************************
+
+### Solvers
+
+- Global:
+
+  -patchEvent are now automatically read by solvers inside fields file
+  -keyword "eventTimeTracking" is used to constraint the solver to
+  explictly compute solution at event time (source/patch events)
+
+- groundwaterFoam
+
+  - The non-convergence of the Picard's algorithm now forces the solver to
+  recompute the time iteration reducing the time step
+  - add specific storage term (Ss) to the Richards' formulation
+  - adding by default the mass-conservative terms to head pressure equation
+  (mixed-formulation). The old head-pressure formulation can be now obtained
+  adding "massConservative false;" in transportProperties
+
+- groundwater2DFoam
+
+  - solver adapted to handle uniform or non-uniform infiltration event (also
+  accept non-conformal mesh event => consider as uniform infiltration)
+  - time-stepping is now based on the truncation error (see the notes for
+  porousScalarTransportFoam)
+
+- porousScalarTransportFoam
+  
+  - support for multiple transported species in a single case. Species are
+  listed in a "species" wordList in the transportProperties dictionary. 
+  Each species can have its own porousTransport parameters and dispersion
+  model. These are found in sub-dictionaries of transportProperties, each 
+  named the same as a species. The change is backward compatible (the absence
+  of a list of species is taken to mean a single species with name "C", and
+  species without their own sub-dictionaries have their properties read
+  directly from transportProperties). This support has also been extended to 
+  all transport solvers in the toolbox
+  - epsTotal now defaults to 1
+  - eps can now be passed either as a scalar or as a field
+  - time-stepping is based on the truncation error related ot the time scheme
+  used (Euler, backward or CrankNicolson) and specified by the "truncationError"
+  keyword in system/controlDict. The relative numerical error is computed using
+  dC3/dt3 or dC2/dt2 (depending on the time-scheme) and maintained below the
+  user-defined value
+
+- porousScalarTransport2DFoam
+
+  - support for multiple transported species in a single case (see the notes
+  for porousScalarTransportFoam)
+  - epsTotal now defaults to 1
+  - eps can now be passed either as a scalar or as a field
+  - time-stepping is now based on the truncation error (see the notes for
+  porousScalarTransportFoam)
+  
+- groundwaterTransportFoam
+
+  - The non-convergence of the Picard's algorithm now forces the solver to
+  recompute the time iteration reducing the time step
+  - CSV output fixed
+  - add specific storage term (Ss) to the Richards' formulation
+  - adding by default the mass-conservative terms to head pressure equation
+  (mixed-formulation). The old head-pressure formulation can be now obtained
+  adding "massConservative false;" in transportProperties
+  - support for multiple transported species in a single case (see the notes
+  for porousScalarTransportFoam)
+  - epsTotal now defaults to 1
+  - eps can now be passed either as a scalar or as a field
+  - time-stepping is now based on the truncation error for the species
+   (see the notes for porousScalarTransportFoam)
+
+- groundwaterTransport2DFoam
+
+  - new solver coupling 2D water modeling (groundwater2DFoam) with 2D scalar
+  transport (porousScalarTransport2DFoam)
+  - support for multiple transported species in a single case (see the notes
+  for porousScalarTransportFoam)
+  - epsTotal now defaults to 1
+  - time-stepping is now based on the truncation error for the species and
+  hwater variations (see the notes for porousScalarTransportFoam)
+
+### Libraries
+
+- toolsGIS
+
+  - uniformInfiltrationEventFile replaced by infiltrationEventFile
+  infiltration for groundwater2DFoam can be uniform or non-uniform (value
+  specified at each time for each cell in event file)
+
+- eventFile
+
+  - now accepts two successive identical dates with different values for
+  imposing step variation.
+
+- eventFlux
+
+  - now accept zero flux field (phi=0)
+  - FatalError is handle if fixed flux > 0 and phi = 0
+  - new static function through wich solvers can designate a list to be
+  populated with non-owning pointers to patchEventFiles associated with
+  instances of this BC. This scheme replaces the previous method which used an
+  IODictionary to communicate with solvers. If no list is passed, any
+  eventFlux condition with an event file will trigger a fatal error.
+
+- eventInfiltration
+
+  - new static function through wich solvers can designate a list to be
+  populated with non-owning pointers to patchEventFiles associated with
+  instances of this BC. This scheme replaces the previous method which used an
+  IODictionary to communicate with solvers. If no list is passed, any
+  eventInfiltration condition with an event file will trigger a fatal error.
+
+- porousModels
+
+  - relativePermeabilityModel/capillarityModel has new function Se() which
+  return effective saturation.
+
+- multiscalarMixture
+
+  - new class developed to support multiple species in transport solvers.
+  Objects of this class can read the properties for all species in a case,
+  and also contain their concentration fields. They also do most of the work
+  required to support species source events ("eventFileTracerSource" entries); 
+  however, time tracking cannot be handled internally by this class and 
+  therefore solvers that support this type of events have to, on construction,
+  refer to a list that will be populated with non-owning pointers to any event
+  files that are found (otherwise the solver will be deemed incompatible with 
+  this type of events and the presence of any "eventFileTracerSource" entry 
+  will raise a fatal error).
+
+
+### Tutorials
+
+- fix event keywords in several tutorials
+
+- cleaning configuration files removing useless keywords/dictionaries
+
+- new 1D_eventFlux test case for time scheme efficiency comparison (Euler,
+  backward, CrankNicolson)
+
+************************
+*** PMFv1906
+*** Event file generalization + seepage/forcing term for 2D solvers
+************************
+
+### Solvers
+
+- Global :
+
+  - Event file can be specified in transportProperties to force the solver
+    to compute solution at given date time.
+    eventFileSource for volumetric/mass event :
+    eventFilePatch for infiltration/fixed flux event on BC
+    eventFileOutput to specify write times
+
+  - solvers with injection/extraction terms are now conservative using Euler
+  or backward time-scheme (Crank-Nicholson still not supported)
+
+  - All injection terms in event should be negative (as for boundaries) and
+  extraction terms should be positive (as for outlet boundary fluxes)
+
+- groundwater2DFoam
+
+  - solver accepts dry cells (display WARNING when adding water)
+
+- groundwaterFoam
+
+  - seepage function is available (generates seepageTerm field)
+  - potentialMNT field is modified if < z0
+
+- impesFoam/anisoImpesFoam
+
+  - generalization of the "event" use wellbore dictionary/function is obsolete
+
+- porousScalarTransportFoam
+
+  - water content (theta) can be given instead of saturation (Sphase) to allow
+  the direct use of pre-computed stationaryGroundwaterFoam computations
+  - timestep is now controlled by porous- Courant number
+  
+- porousScalarTransport2DFoam
+
+  - retard coefficient fixed
+  - seepage outlet handled (requires seepageTerm field)
+  - fatal error added when hwater field is negative
+  - solver requires for initialization hwater or potential/z0
+
+- stationaryGroundwater2DFoam
+
+  - seepage function is available (generates seepageTerm field)
+  - potentialMNT field is modified if < z0
+
+### Libraries
+
+- porousBoundaryConditions
+
+  - eventInfiltration
+    new BC to impose event variable velocity in impesFoam, anisoImpesFoam
+    and groundwaterFoam. Patch event file is directly given in the BC
+    dictionary using the keyword "eventFile" (as for fixedFlux)
+
+  - eventFlux
+    replace old fixedFlux BC for porousScalarTransportFoam
+
+- porousModels
+
+  - alphaDispersion model fixed
+
+- toolsGIS
+
+  - event files generalized to all solvers
+  - value at given time is interpolated using given event values
+  - event values before first event time and after last event time is equal to 0
+  - keyword event differenciation : 
+    - source event for injection/extraction terms in the domains
+    - patch event for tracer injection (porousScalarTransportFoam)
+    - infiltration event for uniform infiltration (groundwater2DFoam)
+    - output event to specify write times
+
+************************
+*** V1901
+*** Hydrology module release
+************************
+
+### Wiki
+
+- A wiki has been initialised for some solvers and utilities on github
+
+  https://github.com/phorgue/porousMultiphaseFoam/wiki
+
+### Solvers
+
+- groundwater2DFoam
+
+  - water bilan added (with stationary option to stop run)
+  - dhmax is relative to the max of hwater field
+  - potentialEqn is solved instead of hwater equation (identical to stationary)
+
+- porousScalarTransportFoam
+
+  - mass balance added for C tracer for each non-wall patch and injection
+  wellbores. Results are displayed in terminal and CSV file (see tutorials)
+
+- porousScalarTransport2DFoam
+
+  - passive scalar transport for pre-calulated 2D flux field with
+  groundwater2DFoam
+
+- stationaryGroundwater2DFoam
+
+  - "stationary" version of groundwater2DFoam
+  - fixedPotentialList added in transportProperties (optional)
+  - forcing potential mode is added with two possible modes :
+    - fixedValue : use values given in fixedPotentialList
+    - fixedMNT : use bilinear interpolated value using fileMNT given 
+
+- stationaryGroundwaterFoam
+
+  - "stationary" version of groundwaterFoam (Richards's equation)
+
+### Tutorials
+
+- groundwater2DFoam
+
+  - updated to be similar to the stationary case
+
+- stationaryGroundwater2DFoam
+
+  - new tutorial relative to the new solver (use forcingPotential option)
+
+- stationaryGroundwaterFoam
+
+  - new tutorial relative to the new solver
+
+- porousScalarTransportFoam
+
+  - new tutorial case to validate the new BC fixedFlux
+
+### Libraries
+
+- toolsGIS
+
+  - new library containing classes for GIS manipulation
+  - first class is MNT file used to read xyz file and performed
+    bilinear interpolation
+  - second class is eventFile to specify spatiallized time-varying source term
+    for groundwater(2D)Foam and porousScalar(2D)Foam solvers
+
+- porousBoundaryConditions
+
+  - new boundary condition "fixedFlux" to impose a user-defined fixed flux
+  for a given specie C. Dispersion is set to 0 along this boundary to respect
+  mass conservation and ensure that fixed flux is correctly computed
+  "event table" can be given in BC for time-dependent fixed flux
+
+### Utilities
+
+- setFieldsFromMNT
+
+  - new utility to initialize fields using MNTfile class with bilinear
+  interpolation
+
+- setFieldsFromXY
+
+  - new option to add offset to interpolated value (also in setFieldsFromMNT)
+
+************************
+*** V1809
+*** New solvers : groundwater2DFoam + groundwaterTransportFoam
+************************
+
+### Solvers
+
+- groundwaterFoam
+
+  - wellbore added to handle injection/extraction
+  
+- impesFoam/anisoImpesFoam/groundwaterFoam
+
+  - wellboreProperies is a subDict of transportProperties
+  - Winj/Wext (wellbore positions) are moved from 0/ to constant/
+
+- porousScalarTransportFoam
+
+  - retard coefficient "R" added
+  - new time-stepping (using dCmax absolute and relative)
+
+- groundwater2DFoam
+
+  - new solver for 2D groundwater flow modeling (Dupuit's hypothesis)
+
+- groundwaterTransportFoam
+
+  - new solver coupling groundwaterFoam and porousScalarTransportFoam
+  the C component is transported in fluid phase with variable saturation
+
+### Libraries
+
+- dispersionModels
+
+  - alphaL/alphaT can be heterogeneous (volScalarField) in the
+
+### Tutorials
+
+- impesFoam/anisoImpesFoam
+
+  - updated (wellboreProperties removed)
+
+- groundwater2DFoam
+
+  - 2 test case for solver validation
+
+### Utilities
+
+- setFieldsFromXY (replace setPermeabilityFieldFromXY)
+
+  - can be used to initialize any volScalarFields from a rectangularMatrix
+    (x | y | value) with linear interpolation between 3 closest points
+
+************************
+*** V1.6.0 (2018-05)
+*** New model kr/pc Ippisch-Vogel-Bastian
+************************
+
+### Solvers
+
+- groundwaterFoam
+
+  - new time step managing (timeStep in controlDict) :
+    - "Picard" is based on the number of Picard's iteration (old method)
+    - "dthetadT" is based on the saturation variation at the previous time step 
+
+- darcyFoam
+
+  - moved to utility folder (now compute pressure field in the time folder with
+  time iteration)
+
+### Libraries
+
+- capillary and relative permeability model
+
+  - new Ippisch model (example in the tutorials/groundwaterFoam/realCase)
+
+- boundary condtions for Head pressure (currently, gravity should be along the
+  Z-axis). Computation are made at each time step, we recommend the use of the
+  setBoundaryHeadPressure function
+
+  - fixedHeadPressure : potential can be fixed (h is computed as potential - z
+    coordinate of the face)
+    if hUnsaturated is given, potential equal to this value in for all faces
+    with z > potential.
+    else h is computed as for the saturated zone.
+
+  - fixedHeadPressureSTL : potential on the boundary is computed using an STL
+  file.
+
+### Utilities
+
+- new folder including utility function for the porousMultiphaseFoam toolbox
+
+  - darcyFoam : It compute pressure and flux field for a given phase at a given
+    time (overwriting
+    the files in current time step).
+    phase used for the computation can be specified with the -phase option ("a"
+    by default)
+
+  - setBoundaryHeadPressure : initialize head pressure boundary condition using
+  fixed value (as fixedHeadPressure BC) or STL file (as fixedHeadPressureSTL)
+
+  - setPermeabilityFieldFromXY : initialize a permeability from table
+  (x | y | K)
+
+************************
+*** V1.5.1 (2018-02)
+*** Bug fixes on groundwaterFoam
+************************
+
+### Libraries
+
+- capillarity and relative permeability models
+
+  - parameters for each model are now displayed in log file (the uniform value
+    or "read file")
+
+### Bug Fixes
+
+- pcVanGenuchten
+
+  - initialisation no longer calls correct() function to avoid numerical issues
+    using groundwaterFoam (the functions correct() or correctAndSb() are
+    directly called in the solvers)
+
+  - it is now possible to set up h=0 using groundwaterFoam
+
+**********************
+*** V1.5 (2017-09)
+*** Scalar transport with dispersion coefficients
+**********************
+
+### Solvers
+
+- porousScalarTransportFoam
+
+  - passive scalar transport solver in porous media with dispersion coefficient
+
+### Libraries
+
+- dispersionModels
+
+  - models to compute the effective diffusion (or dispersion) in porous media
+  (model with alphaT and alphaL is available).
+
+### Bug fixes
+
+- OpenFOAM 5.0 compatibility fixed
+
+************************
+*** V1.4.1 (2017-08)
+*** Bug fixes and toolbox cleaning
+************************
+
+### Toolbox cleaning (indent fixed)
+
+### Bug fixes
+
+- darcyFoam
+
+  - Ua field is correctly written
+
+- impesFoam
+
+  - capillary term correctly computed
+    ("fvc::interpolate(fvc:grad(Sb))" ==> "fvc:snGrad(Sb)")
+
+- incompressiblePhase
+
+  - test on phi header has been removed (useless and incompatibility with
+    OpenFOAM 5.0)
+
+**********************
+*** V1.4 (2017-02)
+*** New solver for one-phase flow : darcyFoam
+**********************
+
+### Toolbox re-organization
+
+### Solvers
+
+- darcyFoam (new solver)
+
+  - one phase flow solver similar to porousSimpleFoam but using the
+    porousMultiphaseFoam toolbox's parameters.
+
+### Bug Fixes
+
+- anisoImpesFoam/impesFoam/groundwaterFoam
+
+  - solver now update  phia or phib in SEqn.H only if Ua or Ub are fixedValue
+    boundary conditions to avoid numerical instabilities (bug partially fixed
+    in V1.3.1).
+
+
+************************
+*** V1.3.1 (2017-02)
+*** Parallel computation fixed
+************************
+
+### Bug Fixes
+
+- anisoImpesFoam/impesFoam/groundwaterFoam
+
+  - solvers does not update phia/phib in SEqn.H if boundary is a processor
+    patch in order to avoid numerical instabilities.
+
+**********************
+*** V1.3 (2016-09)
+*** New Stability numbers and python script for tutorials execution 
+**********************
+
+### Compatibility fixed for OpenFOAM 4.0
+
+### Solvers
+
+- impesFoam
+
+  - three stability numbers are now available : Coats, Todd and Courant
+    (see doc for more informations)
+
+- anisoImpesFoam
+
+  - still two stability numbers (Coats and Courant) but minor changes to respect
+    coding style (with impesFoam)
+
+### Tutorials
+
+- impesFoam
+
+  - capillary cases modified to use the new Todd's number condition
+    
+- python scripts
+
+  - runTutorials.py runs each tutorials from with end signal to check backward
+    compatibility. Messages are [ OK ] or [ Error OpenFOAM ] or [ Error C++ ]
+
+  - cleanTutorials.py cleans test cases from tutorialsList.py
+
+**********************
+*** V1.2 (2016-05)
+*** Relative permeability and capillary pressure laws can be heterogenous
+**********************
+
+### Libraries
+
+- capillarityModels
+
+  - models now reads "constant/porousModels" folder to find parameters fields
+    which can be heteroegenous. Switch to the transportProperties dictionary if
+    file is not found.
+
+- relativePermeabilityModels
+
+  - similar to capillarityModels
+
+### Tutorials
+
+- impesFoam-tutorials
+
+  - BuckleyLeverett/BrooksAndCorey case updated to use volScalarField
+    parameters instead of transport properties
+
+- groundwaterFoam-tutorials
+
+  - 1Dinfiltration case updated to use volScalarField parameters instead of
+    transport properties
+	
+### Bug Fixes
+
+- impesFoam/anisoImpesFoam/groundwaterFoam
+
+  - error between timestep used and timestep displayed
+  - velocity BC updated before SEqn.H (or hEqn.H) for time-dependent conditions
+
+- groundwaterFoam
+
+  - change writeOpt for phitheta (useless field, only phi is used)
+
+**********************
+*** V1.1 (2015-09)
+*** New solver for groundwater flows (Richards' equation)
+**********************
+
+### Solvers
+
+- groundwaterFoam (new solver)
+
+  - solver added for solving Richards' equation (unsaturated soils)
+
+- impesFoam/anisoImpesFoam
+
+  - wellbore positions are optional
+  - displays only the CFL chosen (Coats / Courant Number)
+	
+### Libraries
+
+- capillarityModels
+
+  - new functions for groundwaterFoam added in the pcVanGenuchen class
+    (pcLinear and pcBrooksAndCorey does not work with groundwaterFoam)
+
+### Tutorials
+
+- groundWaterFoam-tutorials
+
+  - validation case (1Dinfiltration) and example (realCase) added
+
+### Bug Fixes
+
+- impesFoam/anisoImpesFoam
+
+  - parallel computation of min/max added
+
+- porousBoundaryConditions
+
+  - effective saturation corrected for Dirichlet boundary conditions
+
+**********************
+*** V1.0 (2014-10)
+*** 1st release of the toolbox, two solvers two-phase flow in porous media
+**********************
+
+### Solvers 
+
+- impesFoam (new solver)
+
+  - two-phase flow solvers for isotropic porous medium
+    (permeability K is volScalarField)
+
+- anisoImpesFoam (new solver)
+
+  - two-phase flow solvers for anisotropic porous medium
+  (permeability K is volTensorField)
+
+### Libraries
+
+- capillarityModels
+
+  - usual capillary models for impesFoam/anisoImpesFoam (Brooks and Corey,
+    Van Genuchten, Linear)
+
+- phaseModels
+
+  - incompressible phase model for poroous media flows (constant density and
+    viscosity)
+
+- relativePermeabilityModels
+
+  - usual relative permeability laws for impesFoam/anisoImpesFoam (Brooks and
+    Corey, Van Genuchten)

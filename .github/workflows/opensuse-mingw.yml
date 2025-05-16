@@ -1,0 +1,52 @@
+name: Windows release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        openfoam_version: [v2406]
+
+    container: 'ghcr.io/phorgue/porousmultiphasefoam:openfoam-${{matrix.openfoam_version}}-opensuse-mingw'
+
+    steps:
+
+    - uses: nelonoel/branch-name@v1.0.1
+
+    - name: Checkout
+      run: |
+          git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git -b ${BRANCH_NAME} .
+
+    - name: Build
+      run: |
+           FOAM_VERBOSE=true &&  source /openfoam/etc/bashrc /openfoam/etc-mingw/prefs.sh && ls && ./Allwmake -j
+           zypper install -y zip
+           cd /github/home/OpenFOAM/user-${{matrix.openfoam_version}}/platforms/linux64MingwDPInt32Opt/
+           zip -r pmf-opensuse-mingw-${{matrix.openfoam_version}}.zip .           
+
+    - name: Installer archive upload push
+      uses: actions/upload-artifact@v4
+      with:
+          name: pmf-opensuse-mingw-${{matrix.openfoam_version}}
+          path: /github/home/OpenFOAM/user-${{matrix.openfoam_version}}/platforms/linux64MingwDPInt32Opt/pmf-opensuse-mingw-${{matrix.openfoam_version}}.zip
+
+  publish:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Publish assets
+      uses: alexellis/upload-assets@0.4.0
+      env:
+          GITHUB_TOKEN: ${{ github.token }}
+      with:
+          asset_paths: '["*/*.zip"]'

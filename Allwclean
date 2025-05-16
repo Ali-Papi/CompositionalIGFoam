@@ -1,0 +1,37 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # run from this directory
+set -x
+
+# cleaning solvers 
+
+wclean all solvers
+wclean all libraries
+wclean all utilities
+
+# purge option to clean executables
+if [ "$1" = "--purge" ]
+then
+    # clean solver executables
+    rm -f $FOAM_USER_APPBIN/anisoImpesFoam
+    rm -f $FOAM_USER_APPBIN/groundwater2DFoam
+    rm -f $FOAM_USER_APPBIN/groundwaterFoam
+    rm -f $FOAM_USER_APPBIN/groundwaterTransport2DFoam
+    rm -f $FOAM_USER_APPBIN/groundwaterTransportFoam
+    rm -f $FOAM_USER_APPBIN/impesFoam
+    rm -f $FOAM_USER_APPBIN/porousScalarTransport2DFoam
+    rm -f $FOAM_USER_APPBIN/porousScalarTransportFoam
+    # clean utilities
+    rm -f $FOAM_USER_APPBIN/darcyFoam
+    rm -f $FOAM_USER_APPBIN/mapFieldsFrom2D
+    rm -f $FOAM_USER_APPBIN/setBoundaryWaterLevel
+    rm -f $FOAM_USER_APPBIN/setFieldsFromDEM
+    rm -f $FOAM_USER_APPBIN/setFieldsFromXY
+    rm -f $FOAM_USER_APPBIN/subsetMeshFromDEM
+    # clean dynamic libraries
+
+    rm -f $FOAM_USER_LIBBIN/libPMFnumericalMethods.so
+    rm -f $FOAM_USER_LIBBIN/libPMFporousBoundaryConditions.so
+    rm -f $FOAM_USER_LIBBIN/libPMFporousModels.so
+    rm -f $FOAM_USER_LIBBIN/libPMFtoolsGIS.so
+    rm -f $FOAM_USER_LIBBIN/libPMFgeneral.so
+fi
